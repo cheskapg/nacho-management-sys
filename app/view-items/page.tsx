@@ -42,7 +42,7 @@ const Items = () => {
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/items');
+      const response = await fetch('/api/getItems');
       if (!response.ok) {
         throw new Error(`Error: ${response.status}`);
       }
@@ -75,7 +75,7 @@ const Items = () => {
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/item', {
+      const response = await fetch('/api/addItem', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -334,12 +334,12 @@ const Items = () => {
                   </div>
                   <div className="bg-gray-50 p-3 rounded">
                     <span className="block text-xs text-gray-500">Unit Price</span>
-                    <span className="font-semibold">${item.unit_price.toFixed(2)}</span>
+                    <span className="font-semibold">${item.unit_price}</span>
                   </div>
                 </div>
                 <div className="mt-3 bg-blue-50 p-3 rounded">
                   <span className="block text-xs text-blue-500">Subtotal</span>
-                  <span className="font-semibold text-blue-700">${item.subtotal.toFixed(2)}</span>
+                  <span className="font-semibold text-blue-700">${item.subtotal}</span>
                 </div>
                 <div className="mt-3 text-xs text-gray-400">
                   {item.created_at && (
