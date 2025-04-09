@@ -252,7 +252,7 @@ const Items = () => {
       )}
 
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Items Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gray-800">View all items</h1>
         <div className="flex space-x-4">
           <button
             onClick={() => fetchItems()}
