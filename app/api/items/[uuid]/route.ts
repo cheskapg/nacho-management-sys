@@ -73,16 +73,15 @@ export async function DELETE(
     const { uuid } = params;
     const response = await fetch(`${API_URL}/items/${uuid}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
+      throw new Error(data.message || 'Failed to delete');
     }
 
-    const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error deleting item:', error);
