@@ -26,6 +26,16 @@ interface Product {
   deleted_at?: string;
 }
 
+// Define validation error types
+interface ValidationErrors {
+  customer_uuid?: string;
+  // sale_uuid?: string;
+  product_uuid?: string;
+  quantity?: string;
+  unit_price?: string;
+  general?: string;
+}
+
 interface ItemFormData {
   sale_uuid: string;
   product_uuid: string;
@@ -48,6 +58,7 @@ const Items = () => {
     unit_price: undefined,
     customer_uuid: "",
   });
+
   const [deletedItemId, setDeletedItemId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   useEffect(() => {
@@ -76,6 +87,12 @@ const Items = () => {
         setError(null);
       }
     } catch (err) {
+      if (!(err instanceof Error) || err.message !== "Validation failed") {
+        setValidationErrors({
+          ...validationErrors,
+          general: "Failed to add item. Please try again.",
+        });
+      }
       setError("Failed to fetch items");
       console.error(err);
     } finally {
@@ -104,11 +121,28 @@ const Items = () => {
           ? parseFloat(value)
           : value,
     });
+    if (validationErrors[name as keyof ValidationErrors]) {
+      setValidationErrors({
+        ...validationErrors,
+        [name]: undefined,
+      });
+    }
   };
 
   // Add item
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
+    // First validate the form
+    const errors = validateForm();
+    setValidationErrors(errors);
+
+    // If there are errors, show them and stop submission
+    if (Object.keys(errors).length > 0) {
+      setShowValidationErrors(true);
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       const response = await fetch("/api/addItem", {
         method: "POST",
@@ -119,8 +153,11 @@ const Items = () => {
       });
 
       if (!response.ok) {
+        setIsSubmitting(false);
+
         throw new Error(`Error: ${response.status}`);
       }
+      setIsSubmitting(false);
 
       await fetchItems();
       setShowAddForm(false);
@@ -140,6 +177,21 @@ const Items = () => {
   // Update item
   const handleUpdateItem = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Only validate relevant fields for update
+    const errors: ValidationErrors = {};
+
+    if (!formData.quantity || formData.quantity < 1) {
+      errors.quantity = "Quantity must be at least 1";
+    } else if (!Number.isInteger(Number(formData.quantity))) {
+      errors.quantity = "Quantity must be a whole number";
+    }
+
+    setValidationErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      setShowValidationErrors(true);
+      return;
+    }
     if (!editingItem) return;
 
     try {
@@ -167,12 +219,15 @@ const Items = () => {
         customer_uuid: "",
       });
     } catch (err) {
+      setValidationErrors({
+        general: "Failed to update item. Please try again.",
+      });
       setError("Failed to update item");
       console.error(err);
     }
   };
   const [productList, setProductList] = useState([]);
-  const [customerSalesList, setCustomerSalesList] = useState([]);
+  const [customerSalesList, setCustomerSalesList] = useState<any[]>([]);
   const [salesList, setSalesList] = useState([]);
 
   const [customersList, setCustomersList] = useState([]);
@@ -182,24 +237,101 @@ const Items = () => {
       const response = await fetch(`/api/sales/allSales`);
       const data = await response.json();
       setSalesList(data); // Store all sales in state
+      filterSalesByCustomerUuid(data, customerUuid);
     } catch (error) {
       console.error("Error fetching sales:", error);
     }
   };
 
+  // Filter sales based on customer UUID
+  const filterSalesByCustomerUuid = (sales: any[], customerUuid: string) => {
+    const filteredSales = sales.filter(
+      (sale) => sale.customer_uuid === customerUuid
+    );
+    setCustomerSalesList(filteredSales);
+  };
+  // const fetchCustomers = async () => {
+  //   try {
+  //     const response = await fetch("/api/customers/allCustomers"); // Assuming you renamed the route
+  //     const data = await response.json();
+  //     console.log(data);
+  //     setFormData((prev) => ({
+  //       ...prev,
+  //       customer_uuid: data[0]?.uuid || "",
+  //     }));
+  //     setCustomersList(data);
+
+  //     if (data.length > 0) {
+  //       const firstCustomerUuid = data[0]?.uuid;
+  //       setCustomerUuid(firstCustomerUuid); // Set first customer UUID
+  //       setFormData((prev) => ({
+  //         ...prev,
+  //         customer_uuid: firstCustomerUuid, // Set customer UUID in form
+  //       }));
+  //       filterSalesByCustomerUuid(salesList, firstCustomerUuid); // Filter sales based on the first customer
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching products:", error);
+  //   }
+  // };
   const fetchCustomers = async () => {
     try {
-      const response = await fetch("/api/customers/allCustomers"); // Assuming you renamed the route
+      const response = await fetch("/api/customers/allCustomers");
       const data = await response.json();
-      console.log(data);
-      setFormData((prev) => ({
-        ...prev,
-        customer_uuid: data[0]?.uuid || "",
-      }));
       setCustomersList(data);
+
+      if (data.length > 0) {
+        // Set the first customer's UUID as the default value
+        // const firstCustomerUuid = data[0].uuid;
+        // setFormData((prev) => ({
+        //   ...prev,
+        //   customer_uuid: firstCustomerUuid, // Set the first customer's UUID
+        // }));
+      }
     } catch (error) {
-      console.error("Error fetching products:", error);
+      console.error("Error fetching customers:", error);
     }
+  };
+
+  // Add validation errors state
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
+    {}
+  );
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Function to validate the form
+  const validateForm = () => {
+    const errors: ValidationErrors = {};
+
+    // Validate customer selection - only needed for new items
+    if (!editingItem && !formData.customer_uuid) {
+      errors.customer_uuid = "Please select a customer";
+    }
+
+    // Validate sale selection - only needed for new items
+    if (!editingItem && !formData.sale_uuid) {
+      // Note: We can skip this error if creating a new sale is allowed
+      // if (formData.sale_uuid !== "") {
+      //   errors.sale_uuid = "Please select a sale or create a new one";
+      // }
+    }
+
+    // Validate product selection
+    if (!formData.product_uuid) {
+      errors.product_uuid = "Please select a product";
+    }
+
+    // Validate quantity
+    if (!formData.quantity || formData.quantity < 1) {
+      errors.quantity = "Quantity must be at least 1";
+    } else if (!Number.isInteger(Number(formData.quantity))) {
+      errors.quantity = "Quantity must be a whole number";
+    }
+
+    // Unit price validation would go here if it wasn't disabled
+
+    return errors;
   };
   const fetchProducts = async () => {
     try {
@@ -226,24 +358,40 @@ const Items = () => {
       product_uuid: selectedProduct?.uuid ?? "",
       unit_price: selectedProduct?.price ?? 0,
     });
+    if (validationErrors.product_uuid) {
+      setValidationErrors({
+        ...validationErrors,
+        product_uuid: undefined,
+      });
+    }
     console.log(selectedProduct, "selectedProduct");
     console.log(selectedProduct?.price);
   };
 
+  console.log(formData.sale_uuid, "formData.sale_uuid");
   const handleSalesChange = (e: any) => {
     setFormData({ ...formData, sale_uuid: e.target.value });
+    // Clear error
+    // if (validationErrors.sale_uuid) {
+    //   setValidationErrors({
+    //     ...validationErrors,
+    //     sale_uuid: undefined,
+    //   });
+    // }
   };
   // Filter sales by customer UUID when customer changes
   const handleCustomerChange = (e: any) => {
     const newCustomerUuid = e.target.value;
-    setCustomerUuid(newCustomerUuid);
     setFormData((prev) => ({ ...prev, customer_uuid: newCustomerUuid }));
+    filterSalesByCustomerUuid(salesList, newCustomerUuid); // Filter sales based on the first customer
 
-    // Filter sales list based on selected customer UUID
-    const filteredSales = salesList.filter((sale: any) => sale.customer_uuid === newCustomerUuid);
-
-    setCustomerSalesList(filteredSales);
-    console.log(customerSalesList, "salesList filtered");
+    // Clear related validation errors
+    if (validationErrors.customer_uuid) {
+      setValidationErrors({
+        ...validationErrors,
+        customer_uuid: undefined,
+      });
+    }
   };
   // Delete item
   const handleDeleteItem = async (uuid: string) => {
@@ -321,59 +469,75 @@ const Items = () => {
 
       {/* Add/Edit Item Form */}
       {(showAddForm || editingItem) && (
-        <div className="bg-white shadow-md rounded-lg p-6 mb-8">
+          <div className="bg-white shadow-md rounded-lg p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">
             {editingItem ? "Edit Item" : "Add New Item"}
           </h2>
+          
+          {/* General error message */}
+          {validationErrors.general && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {validationErrors.general}
+            </div>
+          )}
+          
           <form onSubmit={editingItem ? handleUpdateItem : handleAddItem}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {!editingItem && (
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Customer
+                      Customer *
                     </label>
                     <select
-                      name="sale_uuid"
+                      name="customer_uuid"
                       value={formData.customer_uuid}
                       onChange={handleCustomerChange}
                       required
-                      className="w-full  px-3 py-2 border border-gray-300 rounded-md"
+                      className={`w-full px-3 py-2 border rounded-md ${
+                        validationErrors.customer_uuid && showValidationErrors
+                          ? "border-red-500 bg-red-50"
+                          : "border-gray-300"
+                      }`}
                     >
-                      <option disabled value="null">
-                        Select Customer
-                      </option>
-                      {/* <option value="">New Customer</option> */}
-
+                      <option value="">Select Customer</option>
                       {customersList.map((customer: any) => (
                         <option key={customer.uuid} value={customer.uuid}>
                           {customer.name} - {customer.email}
                         </option>
                       ))}
                     </select>
+                    {validationErrors.customer_uuid && showValidationErrors && (
+                      <p className="text-red-500 text-xs mt-1">{validationErrors.customer_uuid}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Sale UUID
+                      Sale *
                     </label>
                     <select
                       name="sale_uuid"
                       value={formData.sale_uuid}
                       onChange={handleSalesChange}
-                      required
-                      className="w-full  px-3 py-2 border border-gray-300 rounded-md"
+                      // required
+                      className={`w-full px-3 py-2 border rounded-md `}
+                      // ${
+                      //   validationErrors.sale_uuid && showValidationErrors
+                      //     ? "border-red-500 bg-red-50"
+                      //     : "border-gray-300"
+                      // }
+                      disabled={!formData.customer_uuid}
                     >
-                      <option disabled value="null">
-                        Select sale
-                      </option>
                       <option value="">New sale</option>
-
                       {customerSalesList.map((sales: any) => (
                         <option key={sales.uuid} value={sales.uuid}>
                           {sales.date} - Total Amount: {sales.total_amount}
                         </option>
                       ))}
                     </select>
+                    {/* {validationErrors.sale_uuid && showValidationErrors && (
+                      <p className="text-red-500 text-xs mt-1">{validationErrors.sale_uuid}</p>
+                    )} */}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -384,7 +548,11 @@ const Items = () => {
                       value={formData.product_uuid}
                       onChange={handleProductChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      className={`w-full px-3 py-2 border rounded-md ${
+                        validationErrors.product_uuid && showValidationErrors
+                          ? "border-red-500 bg-red-50"
+                          : "border-gray-300"
+                      }`}
                     >
                       <option value="">Select a product</option>
                       {productList.map((product: any) => (
@@ -393,6 +561,9 @@ const Items = () => {
                         </option>
                       ))}
                     </select>
+                    {validationErrors.product_uuid && showValidationErrors && (
+                      <p className="text-red-500 text-xs mt-1">{validationErrors.product_uuid}</p>
+                    )}
                   </div>
                 </>
               )}
@@ -407,8 +578,15 @@ const Items = () => {
                   onChange={handleInputChange}
                   min="1"
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    validationErrors.quantity && showValidationErrors
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300"
+                  }`}
                 />
+                {validationErrors.quantity && showValidationErrors && (
+                  <p className="text-red-500 text-xs mt-1">{validationErrors.quantity}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -422,7 +600,7 @@ const Items = () => {
                   onChange={handleInputChange}
                   disabled={true}
                   step="0.01"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
                 />
               </div>
             </div>
@@ -432,20 +610,35 @@ const Items = () => {
                 onClick={() => {
                   setShowAddForm(false);
                   setEditingItem(null);
+                  setValidationErrors({});
+                  setShowValidationErrors(false);
                 }}
                 className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+                disabled={isSubmitting}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400"
+                disabled={isSubmitting}
               >
-                {editingItem ? "Update Item" : "Add Item"}
+                {isSubmitting ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {editingItem ? "Updating..." : "Adding..."}
+                  </span>
+                ) : (
+                  editingItem ? "Update Item" : "Add Item"
+                )}
               </button>
             </div>
           </form>
         </div>
+    
       )}
 
       {/* Items Grid */}

@@ -116,7 +116,9 @@ const SalesDashboard = () => {
   const fetchSalesByMonth = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/reports/month/${year}/${month}/monthly-sales`);
+      const response = await fetch(
+        `/api/reports/month/${year}/${month}/monthly-sales`
+      );
       if (!response.ok) {
         throw new Error(`Error: ${response.status}`);
       }
@@ -135,7 +137,9 @@ const SalesDashboard = () => {
   const fetchCustomerSummary = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/reports/month/${year}/${month}/${customerUuid}/customer-monthly-sales`);
+      const response = await fetch(
+        `/api/reports/month/${year}/${month}/${customerUuid}/customer-monthly-sales`
+      );
       if (!response.ok) {
         throw new Error(`Error: ${response.status}`);
       }
@@ -170,7 +174,8 @@ const SalesDashboard = () => {
     return customerSummary
       .filter(
         (item) =>
-          item.customer && item.customer.name && 
+          item.customer &&
+          item.customer.name &&
           (item.total_customer_monthly_sale != null || item.total_spent != null)
       )
       .map((item) => ({
@@ -184,25 +189,27 @@ const SalesDashboard = () => {
     if (!monthlySalesData || !monthlySalesData.sales) {
       return [];
     }
-    
-    const dailyData: { [key: number]: { day: number; total: number; count: number } } = {};
-  
+
+    const dailyData: {
+      [key: number]: { day: number; total: number; count: number };
+    } = {};
+
     monthlySalesData.sales.forEach((sale: any) => {
       if (!sale || !sale.date || sale.total_amount == null) {
         return;
       }
-  
+
       const date = new Date(sale.date);
       const day = date.getDate();
-  
+
       if (!dailyData[day]) {
         dailyData[day] = { day, total: 0, count: 0 };
       }
-  
+
       dailyData[day].total += parseFloat(sale.total_amount);
       dailyData[day].count += 1;
     });
-  
+
     return Object.values(dailyData).sort((a, b) => a.day - b.day);
   };
 
@@ -222,7 +229,6 @@ const SalesDashboard = () => {
               quantity: 0,
             };
           }
-
           productSales[item.product_uuid].sales += item.subtotal;
           productSales[item.product_uuid].quantity += item.quantity;
         });
@@ -234,44 +240,59 @@ const SalesDashboard = () => {
       .slice(0, 5);
   };
 
+  //           const subtotal = parseFloat(String(item.subtotal).replace(/[^\d.-]/g, ''));
+  //           productSales[item.product_uuid].sales += isNaN(subtotal) ? 0 : subtotal;
+  //           productSales[item.product_uuid].quantity += item.quantity;
+  //         });
+  //       });
+  //     });
+
+  //     return Object.values(productSales)
+  //     .sort((a, b) => b.sales - a.sales)
+  //     .slice(0, 5);
+  // };
   // Prepare customer product breakdown data
   const prepareCustomerProductBreakdown = () => {
-    return customerSummary.map(customer => {
+    return customerSummary.map((customer) => {
       // Create a map to aggregate products per customer
-      const productMap = new Map<string, {
-        product_uuid: string,
-        product_name: string,
-        total_quantity: number,
-        total_spent: number
-      }>();
-      
+      const productMap = new Map<
+        string,
+        {
+          product_uuid: string;
+          product_name: string;
+          total_quantity: number;
+          total_spent: number;
+        }
+      >();
+
       // Process all sales for this customer
-      customer.sales.forEach(sale => {
-        sale.items?.forEach(item => {
+      customer.sales.forEach((sale) => {
+        sale.items?.forEach((item) => {
           if (!productMap.has(item.product_uuid)) {
             productMap.set(item.product_uuid, {
               product_uuid: item.product_uuid,
               product_name: item.product_name,
               total_quantity: 0,
-              total_spent: 0
+              total_spent: 0,
             });
           }
-          
+
           const currentProduct = productMap.get(item.product_uuid)!;
           currentProduct.total_quantity += item.quantity;
           currentProduct.total_spent += item.subtotal;
         });
       });
-      
+
       // Convert the map to an array
       const products = Array.from(productMap.values());
-      
+
       return {
         customer_uuid: customer.customer.uuid,
         customer_name: customer.customer.name,
-        total_spent: customer.total_customer_monthly_sale || customer.total_spent || 0,
+        total_spent:
+          customer.total_customer_monthly_sale || customer.total_spent || 0,
         order_count: customer.sales.length,
-        products: products
+        products: products,
       };
     });
   };
@@ -287,7 +308,8 @@ const SalesDashboard = () => {
       totalTransactions = monthlySalesData.numberOfSales || 0;
     } else {
       customerSummary.forEach((customer) => {
-        totalSales += customer.total_customer_monthly_sale || customer.total_spent || 0;
+        totalSales +=
+          customer.total_customer_monthly_sale || customer.total_spent || 0;
         totalTransactions += customer.sales.length;
       });
     }
@@ -409,6 +431,7 @@ const SalesDashboard = () => {
       </div>
     );
   };
+  console.log("topProducts data:", topProducts);
 
   const renderCustomerTable = () => {
     return (
@@ -450,7 +473,9 @@ const SalesDashboard = () => {
                       <td className="py-2 px-4 border-b">{totalItems}</td>
                       <td className="py-2 px-4 border-b">
                         <button
-                          onClick={() => toggleCustomerExpansion(customer.customer_uuid)}
+                          onClick={() =>
+                            toggleCustomerExpansion(customer.customer_uuid)
+                          }
                           className="flex items-center px-2 py-1 bg-blue-50 hover:bg-blue-100 rounded text-blue-600 text-sm"
                         >
                           {expandedCustomer === customer.customer_uuid ? (
@@ -477,9 +502,15 @@ const SalesDashboard = () => {
                             <table className="min-w-full bg-white border">
                               <thead className="bg-gray-100">
                                 <tr>
-                                  <th className="py-2 px-4 border-b text-left">Product</th>
-                                  <th className="py-2 px-4 border-b text-left">Quantity</th>
-                                  <th className="py-2 px-4 border-b text-left">Total Spent</th>
+                                  <th className="py-2 px-4 border-b text-left">
+                                    Product
+                                  </th>
+                                  <th className="py-2 px-4 border-b text-left">
+                                    Quantity
+                                  </th>
+                                  <th className="py-2 px-4 border-b text-left">
+                                    Total Spent
+                                  </th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -515,10 +546,12 @@ const SalesDashboard = () => {
   const renderCustomerProductCards = () => {
     return (
       <div className="bg-white p-6 rounded-lg shadow-lg">
-        <h3 className="text-lg font-semibold mb-4">Customer Product Purchases</h3>
+        <h3 className="text-lg font-semibold mb-4">
+          Customer Product Purchases
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {customerProductBreakdown.map((customer) => (
-            <div 
+            <div
               key={customer.customer_uuid}
               className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow"
             >
@@ -533,17 +566,24 @@ const SalesDashboard = () => {
                 </div>
               </div>
               <div className="p-4">
-                <h5 className="text-sm font-medium text-gray-500 mb-2">Purchased Products:</h5>
+                <h5 className="text-sm font-medium text-gray-500 mb-2">
+                  Purchased Products:
+                </h5>
                 <div className="space-y-2">
                   {customer.products.map((product, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-sm border-b pb-2">
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between text-sm border-b pb-2"
+                    >
                       <div className="flex items-center">
                         <Package size={14} className="text-gray-400 mr-2" />
                         <span>{product.product_name}</span>
                       </div>
                       <div className="text-right">
                         <div>Qty: {product.total_quantity}</div>
-                        <div className="text-green-600">${product.total_spent}</div>
+                        <div className="text-green-600">
+                          ${product.total_spent}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -624,9 +664,7 @@ const SalesDashboard = () => {
                   <h3 className="text-sm font-medium text-gray-500">
                     Total Sales
                   </h3>
-                  <p className="text-2xl font-bold">
-                    ${stats.totalSales}
-                  </p>
+                  <p className="text-2xl font-bold">${stats.totalSales}</p>
                   <p className="text-sm text-gray-500">
                     Avg: ${stats.avgOrderValue}/order
                   </p>
@@ -751,7 +789,7 @@ const SalesDashboard = () => {
                             {product.quantity}
                           </td>
                           <td className="py-2 px-4 border-b">
-                            ${(product.sales / product.quantity)}
+                            ${product.sales / product.quantity}
                           </td>
                         </tr>
                       ))}
