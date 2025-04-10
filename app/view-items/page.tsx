@@ -31,6 +31,7 @@ interface ItemFormData {
   product_uuid: string;
   quantity: number;
   unit_price?: number;
+  customer_uuid: string;
 }
 
 const Items = () => {
@@ -38,12 +39,14 @@ const Items = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [customerUuid, setCustomerUuid] = useState("1");
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [formData, setFormData] = useState<ItemFormData>({
     sale_uuid: "",
     product_uuid: "",
     quantity: 1,
     unit_price: undefined,
+    customer_uuid: "",
   });
   const [deletedItemId, setDeletedItemId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -66,6 +69,7 @@ const Items = () => {
       if (data.length === 0) {
         setItems([]);
         setError("No items found");
+        await fetch;
       } else {
         console.log(data.items, "data items", data);
         setItems(data);
@@ -78,9 +82,14 @@ const Items = () => {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
+  const refresh = async (): Promise<void> => {
     fetchItems();
+    fetchSales();
+    fetchCustomers();
+    fetchProducts();
+  };
+  useEffect(() => {
+    refresh();
   }, []);
 
   // Handle form input changes
@@ -120,6 +129,7 @@ const Items = () => {
         product_uuid: "",
         quantity: 1,
         unit_price: undefined,
+        customer_uuid: "",
       });
     } catch (err) {
       setError("Failed to add item");
@@ -148,13 +158,13 @@ const Items = () => {
         throw new Error(`Error: ${response.status}`);
       }
 
-      await fetchItems();
       setEditingItem(null);
       setFormData({
         sale_uuid: "",
         product_uuid: "",
         quantity: 1,
         unit_price: undefined,
+        customer_uuid: "",
       });
     } catch (err) {
       setError("Failed to update item");
@@ -163,34 +173,43 @@ const Items = () => {
   };
   const [productList, setProductList] = useState([]);
   const [salesList, setSalesList] = useState([]);
+  const [customersList, setCustomersList] = useState([]);
 
-  useEffect(() => {
-    async function fetchProducts() {
-      try {
-        const response = await fetch("/api/products/allProducts"); // Assuming you renamed the route
-        const data = await response.json();
-        setProductList(data);
-        setFormData((prev) => ({
-          ...prev,
-          product_uuid: data[0]?.uuid || "", // Set default product UUID if available
-        }));
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      }
+  const fetchSales = async () => {
+    try {
+      const response = await fetch("/api/sales/allSales"); // Assuming you renamed the route
+      const data = await response.json();
+      console.log(data);
+      setSalesList(data);
+    } catch (error) {
+      console.error("Error fetching products:", error);
     }
-    async function fetchSales() {
-      try {
-        const response = await fetch("/api/sales/allSales"); // Assuming you renamed the route
-        const data = await response.json();
-        console.log(data);
-        setSalesList(data);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      }
+  };
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await fetch("/api/customers/allCustomers"); // Assuming you renamed the route
+      const data = await response.json();
+      console.log(data);
+      setCustomersList(data);
+    } catch (error) {
+      console.error("Error fetching products:", error);
     }
-    fetchSales();
-    fetchProducts();
-  }, []);
+  };
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch("/api/products/allProducts"); // Assuming you renamed the route
+      const data = await response.json();
+      setProductList(data);
+      setFormData((prev) => ({
+        ...prev,
+        product_uuid: data[0]?.uuid || "",
+        unit_price: data[0]?.price, // Set default product UUID if available
+      }));
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+  };
 
   const handleProductChange = (e: any) => {
     const selectedProduct = productList.find(
@@ -208,6 +227,9 @@ const Items = () => {
 
   const handleSalesChange = (e: any) => {
     setFormData({ ...formData, sale_uuid: e.target.value });
+  };
+  const handleCustomerChange = (e: any) => {
+    setFormData({ ...formData, customer_uuid: e.target.value });
   };
   // Delete item
   const handleDeleteItem = async (uuid: string) => {
@@ -240,6 +262,7 @@ const Items = () => {
       product_uuid: item.product_uuid,
       quantity: item.quantity,
       unit_price: item.unit_price,
+      customer_uuid: customerUuid,
     });
   };
 
@@ -255,7 +278,9 @@ const Items = () => {
         <h1 className="text-3xl font-bold text-gray-800">View all items</h1>
         <div className="flex space-x-4">
           <button
-            onClick={() => fetchItems()}
+            onClick={() => {
+              refresh();
+            }}
             className="flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-md hover:bg-blue-200 transition-colors"
           >
             <RefreshCw size={18} /> Refresh
@@ -291,6 +316,29 @@ const Items = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {!editingItem && (
                 <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Customer
+                    </label>
+                    <select
+                      name="sale_uuid"
+                      value={formData.customer_uuid}
+                      onChange={handleCustomerChange}
+                      required
+                      className="w-full  px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                      <option disabled value="null">
+                        Select Customer
+                      </option>
+                      {/* <option value="">New Customer</option> */}
+
+                      {customersList.map((customer: any) => (
+                        <option key={customer.uuid} value={customer.uuid}>
+                          {customer.name} - {customer.email}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Sale UUID

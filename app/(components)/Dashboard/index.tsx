@@ -24,11 +24,22 @@ import {
   DollarSign,
   Users,
   ShoppingBag,
+  Package,
+  User,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 interface Sale {
+  uuid: string;
   date: string;
   total_amount: number;
+  items: {
+    product_uuid: string;
+    product_name: string;
+    subtotal: number;
+    quantity: number;
+  }[];
 }
 
 interface CustomerSummaryItem {
@@ -36,27 +47,23 @@ interface CustomerSummaryItem {
     uuid: string;
     name: string;
   };
+  total_customer_monthly_sale: number;
   total_spent: number;
-  sales: {
-    items: {
-      product_uuid: string;
-      product_name: string;
-      subtotal: number;
-      quantity: number;
-    }[];
-  }[];
+  sales: Sale[];
 }
 
 const SalesDashboard = () => {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [salesData, setSalesData] = useState<Sale[]>([]);
+  const [customerUuid, setCustomerUuid] = useState("1");
+  const [monthlySalesData, setMonthlySalesData] = useState<any>({});
   const [customerSummary, setCustomerSummary] = useState<CustomerSummaryItem[]>(
     []
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null);
 
   const COLORS = [
     "#0088FE",
@@ -109,12 +116,12 @@ const SalesDashboard = () => {
   const fetchSalesByMonth = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/sales/month/${year}/${month}`);
+      const response = await fetch(`/api/reports/month/${year}/${month}/monthly-sales`);
       if (!response.ok) {
         throw new Error(`Error: ${response.status}`);
       }
       const data = await response.json();
-      setSalesData(data);
+      setMonthlySalesData(data);
       setError(null);
     } catch (err) {
       setError("Failed to fetch sales data");
@@ -128,7 +135,7 @@ const SalesDashboard = () => {
   const fetchCustomerSummary = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/customers/sales/${year}/${month}`);
+      const response = await fetch(`/api/reports/month/${year}/${month}/${customerUuid}/customer-monthly-sales`);
       if (!response.ok) {
         throw new Error(`Error: ${response.status}`);
       }
@@ -149,28 +156,39 @@ const SalesDashboard = () => {
     fetchCustomerSummary();
   }, [year, month]);
 
+  // Toggle customer expansion
+  const toggleCustomerExpansion = (customerId: string) => {
+    if (expandedCustomer === customerId) {
+      setExpandedCustomer(null);
+    } else {
+      setExpandedCustomer(customerId);
+    }
+  };
+
   // Prepare data for charts
   const prepareCustomerPieData = () => {
     return customerSummary
       .filter(
         (item) =>
-          item.customer && item.customer.name && item.total_spent != null
-      ) // Ensure valid data
+          item.customer && item.customer.name && 
+          (item.total_customer_monthly_sale != null || item.total_spent != null)
+      )
       .map((item) => ({
-        name: item.customer.name, // Safe access to name
-        value: item.total_spent, // Safe access to total_spent
+        name: item.customer.name,
+        value: item.total_customer_monthly_sale || item.total_spent || 0,
       }));
   };
+
   // Daily sales data for line chart
   const prepareDailySalesData = () => {
-    // Ensure salesData is always an array (fallback to empty array)
-    const safeSalesData = Array.isArray(salesData) ? salesData : [];
+    if (!monthlySalesData || !monthlySalesData.sales) {
+      return [];
+    }
     
     const dailyData: { [key: number]: { day: number; total: number; count: number } } = {};
   
-    safeSalesData.forEach(sale => {
+    monthlySalesData.sales.forEach((sale: any) => {
       if (!sale || !sale.date || sale.total_amount == null) {
-        // Skip if sale data is invalid or has missing required fields
         return;
       }
   
@@ -181,13 +199,12 @@ const SalesDashboard = () => {
         dailyData[day] = { day, total: 0, count: 0 };
       }
   
-      dailyData[day].total += sale.total_amount;
+      dailyData[day].total += parseFloat(sale.total_amount);
       dailyData[day].count += 1;
     });
   
     return Object.values(dailyData).sort((a, b) => a.day - b.day);
   };
-  
 
   // Top products data
   const prepareTopProductsData = () => {
@@ -197,7 +214,7 @@ const SalesDashboard = () => {
 
     customerSummary.forEach((customer) => {
       customer.sales.forEach((sale) => {
-        sale.items.forEach((item) => {
+        sale.items?.forEach((item) => {
           if (!productSales[item.product_uuid]) {
             productSales[item.product_uuid] = {
               name: item.product_name,
@@ -217,16 +234,67 @@ const SalesDashboard = () => {
       .slice(0, 5);
   };
 
+  // Prepare customer product breakdown data
+  const prepareCustomerProductBreakdown = () => {
+    return customerSummary.map(customer => {
+      // Create a map to aggregate products per customer
+      const productMap = new Map<string, {
+        product_uuid: string,
+        product_name: string,
+        total_quantity: number,
+        total_spent: number
+      }>();
+      
+      // Process all sales for this customer
+      customer.sales.forEach(sale => {
+        sale.items?.forEach(item => {
+          if (!productMap.has(item.product_uuid)) {
+            productMap.set(item.product_uuid, {
+              product_uuid: item.product_uuid,
+              product_name: item.product_name,
+              total_quantity: 0,
+              total_spent: 0
+            });
+          }
+          
+          const currentProduct = productMap.get(item.product_uuid)!;
+          currentProduct.total_quantity += item.quantity;
+          currentProduct.total_spent += item.subtotal;
+        });
+      });
+      
+      // Convert the map to an array
+      const products = Array.from(productMap.values());
+      
+      return {
+        customer_uuid: customer.customer.uuid,
+        customer_name: customer.customer.name,
+        total_spent: customer.total_customer_monthly_sale || customer.total_spent || 0,
+        order_count: customer.sales.length,
+        products: products
+      };
+    });
+  };
+
   // Calculate summary stats
   const calculateSummaryStats = () => {
     let totalSales = 0;
     let totalItems = 0;
+    let totalTransactions = 0;
+
+    if (monthlySalesData && monthlySalesData.totalMonthlySales) {
+      totalSales = parseFloat(monthlySalesData.totalMonthlySales);
+      totalTransactions = monthlySalesData.numberOfSales || 0;
+    } else {
+      customerSummary.forEach((customer) => {
+        totalSales += customer.total_customer_monthly_sale || customer.total_spent || 0;
+        totalTransactions += customer.sales.length;
+      });
+    }
 
     customerSummary.forEach((customer) => {
-      totalSales += customer.total_spent;
-
       customer.sales.forEach((sale) => {
-        sale.items.forEach((item) => {
+        sale.items?.forEach((item) => {
           totalItems += item.quantity;
         });
       });
@@ -236,7 +304,8 @@ const SalesDashboard = () => {
       totalSales,
       totalCustomers: customerSummary.length,
       totalItems,
-      avgOrderValue: salesData.length ? totalSales / salesData.length : 0,
+      totalTransactions,
+      avgOrderValue: totalTransactions ? totalSales / totalTransactions : 0,
     };
   };
 
@@ -244,6 +313,7 @@ const SalesDashboard = () => {
   const pieData = prepareCustomerPieData();
   const dailyData = prepareDailySalesData();
   const topProducts = prepareTopProductsData();
+  const customerProductBreakdown = prepareCustomerProductBreakdown();
 
   const renderPieChart = () => {
     return (
@@ -273,7 +343,7 @@ const SalesDashboard = () => {
                   />
                 ))}
               </Pie>
-              <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+              <Tooltip formatter={(value: number) => `$${value}`} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -354,35 +424,133 @@ const SalesDashboard = () => {
                 <th className="py-2 px-4 border-b text-left">
                   Items Purchased
                 </th>
+                <th className="py-2 px-4 border-b text-left">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {customerSummary.map((customer) => {
+              {customerProductBreakdown.map((customer) => {
                 // Calculate total items
                 let totalItems = 0;
-                customer.sales.forEach((sale) => {
-                  sale.items.forEach((item) => {
-                    totalItems += item.quantity;
-                  });
+                customer.products.forEach((product) => {
+                  totalItems += product.total_quantity;
                 });
 
                 return (
-                  <tr key={customer.customer.uuid} className="hover:bg-gray-50">
-                    <td className="py-2 px-4 border-b">
-                      {customer.customer.name}
-                    </td>
-                    <td className="py-2 px-4 border-b">
-                      ${customer.total_spent.toFixed(2)}
-                    </td>
-                    <td className="py-2 px-4 border-b">
-                      {customer.sales.length}
-                    </td>
-                    <td className="py-2 px-4 border-b">{totalItems}</td>
-                  </tr>
+                  <React.Fragment key={customer.customer_uuid}>
+                    <tr className="hover:bg-gray-50">
+                      <td className="py-2 px-4 border-b">
+                        {customer.customer_name}
+                      </td>
+                      <td className="py-2 px-4 border-b">
+                        ${customer.total_spent}
+                      </td>
+                      <td className="py-2 px-4 border-b">
+                        {customer.order_count}
+                      </td>
+                      <td className="py-2 px-4 border-b">{totalItems}</td>
+                      <td className="py-2 px-4 border-b">
+                        <button
+                          onClick={() => toggleCustomerExpansion(customer.customer_uuid)}
+                          className="flex items-center px-2 py-1 bg-blue-50 hover:bg-blue-100 rounded text-blue-600 text-sm"
+                        >
+                          {expandedCustomer === customer.customer_uuid ? (
+                            <>
+                              <ChevronUp size={14} className="mr-1" />
+                              Hide Products
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown size={14} className="mr-1" />
+                              Show Products
+                            </>
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+                    {expandedCustomer === customer.customer_uuid && (
+                      <tr>
+                        <td colSpan={5} className="p-0">
+                          <div className="bg-gray-50 p-4">
+                            <h4 className="font-medium text-gray-700 mb-2">
+                              Products Purchased by {customer.customer_name}
+                            </h4>
+                            <table className="min-w-full bg-white border">
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="py-2 px-4 border-b text-left">Product</th>
+                                  <th className="py-2 px-4 border-b text-left">Quantity</th>
+                                  <th className="py-2 px-4 border-b text-left">Total Spent</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {customer.products.map((product, idx) => (
+                                  <tr key={idx} className="hover:bg-gray-50">
+                                    <td className="py-2 px-4 border-b">
+                                      {product.product_name}
+                                    </td>
+                                    <td className="py-2 px-4 border-b">
+                                      {product.total_quantity}
+                                    </td>
+                                    <td className="py-2 px-4 border-b">
+                                      ${product.total_spent}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
           </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderCustomerProductCards = () => {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-lg">
+        <h3 className="text-lg font-semibold mb-4">Customer Product Purchases</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {customerProductBreakdown.map((customer) => (
+            <div 
+              key={customer.customer_uuid}
+              className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+            >
+              <div className="bg-blue-50 p-4 border-b">
+                <div className="flex items-center">
+                  <User size={20} className="text-blue-500 mr-2" />
+                  <h4 className="font-medium">{customer.customer_name}</h4>
+                </div>
+                <div className="mt-2 flex justify-between text-sm">
+                  <span>Total: ${customer.total_spent}</span>
+                  <span>Orders: {customer.order_count}</span>
+                </div>
+              </div>
+              <div className="p-4">
+                <h5 className="text-sm font-medium text-gray-500 mb-2">Purchased Products:</h5>
+                <div className="space-y-2">
+                  {customer.products.map((product, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-sm border-b pb-2">
+                      <div className="flex items-center">
+                        <Package size={14} className="text-gray-400 mr-2" />
+                        <span>{product.product_name}</span>
+                      </div>
+                      <div className="text-right">
+                        <div>Qty: {product.total_quantity}</div>
+                        <div className="text-green-600">${product.total_spent}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -457,10 +625,10 @@ const SalesDashboard = () => {
                     Total Sales
                   </h3>
                   <p className="text-2xl font-bold">
-                    ${stats.totalSales.toFixed(2)}
+                    ${stats.totalSales}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Avg: ${stats.avgOrderValue.toFixed(2)}/order
+                    Avg: ${stats.avgOrderValue}/order
                   </p>
                 </div>
               </div>
@@ -477,7 +645,7 @@ const SalesDashboard = () => {
                   </h3>
                   <p className="text-2xl font-bold">{stats.totalCustomers}</p>
                   <p className="text-sm text-gray-500">
-                    {salesData.length} orders placed
+                    {stats.totalTransactions} orders placed
                   </p>
                 </div>
               </div>
@@ -545,6 +713,7 @@ const SalesDashboard = () => {
             <div className="space-y-6">
               {renderPieChart()}
               {renderCustomerTable()}
+              {renderCustomerProductCards()}
             </div>
           )}
 
@@ -576,13 +745,13 @@ const SalesDashboard = () => {
                         <tr key={product.name} className="hover:bg-gray-50">
                           <td className="py-2 px-4 border-b">{product.name}</td>
                           <td className="py-2 px-4 border-b">
-                            ${product.sales.toFixed(2)}
+                            ${product.sales}
                           </td>
                           <td className="py-2 px-4 border-b">
                             {product.quantity}
                           </td>
                           <td className="py-2 px-4 border-b">
-                            ${(product.sales / product.quantity).toFixed(2)}
+                            ${(product.sales / product.quantity)}
                           </td>
                         </tr>
                       ))}

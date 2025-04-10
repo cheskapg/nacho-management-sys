@@ -10,7 +10,7 @@ export async function GET(
   try {
     const { year, month } = params;
     
-    const response = await fetch(`${API_URL}/sales/month/${year}/${month}`, {
+    const response = await fetch(`${API_URL}/reports/month/${year}/${month}`, {
       headers: {
         'Content-Type': 'application/json',
       },
