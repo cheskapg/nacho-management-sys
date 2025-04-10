@@ -1,4 +1,4 @@
-// app/api/sales/month/[year]/[month]/route.ts
+// app/api/sales/allsales/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_URL = process.env.API_URL || 'http://localhost:3000';

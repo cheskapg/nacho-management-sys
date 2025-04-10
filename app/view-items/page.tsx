@@ -31,7 +31,7 @@ interface ItemFormData {
   product_uuid: string;
   quantity: number;
   unit_price?: number;
-  customer_uuid: string;
+  customer_uuid?: string;
 }
 
 const Items = () => {
@@ -84,7 +84,7 @@ const Items = () => {
   };
   const refresh = async (): Promise<void> => {
     fetchItems();
-    fetchSales();
+    fetchCustomerSales();
     fetchCustomers();
     fetchProducts();
   };
@@ -172,17 +172,18 @@ const Items = () => {
     }
   };
   const [productList, setProductList] = useState([]);
+  const [customerSalesList, setCustomerSalesList] = useState([]);
   const [salesList, setSalesList] = useState([]);
+
   const [customersList, setCustomersList] = useState([]);
 
-  const fetchSales = async () => {
+  const fetchCustomerSales = async () => {
     try {
-      const response = await fetch("/api/sales/allSales"); // Assuming you renamed the route
+      const response = await fetch(`/api/sales/allSales`);
       const data = await response.json();
-      console.log(data);
-      setSalesList(data);
+      setSalesList(data); // Store all sales in state
     } catch (error) {
-      console.error("Error fetching products:", error);
+      console.error("Error fetching sales:", error);
     }
   };
 
@@ -191,6 +192,10 @@ const Items = () => {
       const response = await fetch("/api/customers/allCustomers"); // Assuming you renamed the route
       const data = await response.json();
       console.log(data);
+      setFormData((prev) => ({
+        ...prev,
+        customer_uuid: data[0]?.uuid || "",
+      }));
       setCustomersList(data);
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -228,8 +233,17 @@ const Items = () => {
   const handleSalesChange = (e: any) => {
     setFormData({ ...formData, sale_uuid: e.target.value });
   };
+  // Filter sales by customer UUID when customer changes
   const handleCustomerChange = (e: any) => {
-    setFormData({ ...formData, customer_uuid: e.target.value });
+    const newCustomerUuid = e.target.value;
+    setCustomerUuid(newCustomerUuid);
+    setFormData((prev) => ({ ...prev, customer_uuid: newCustomerUuid }));
+
+    // Filter sales list based on selected customer UUID
+    const filteredSales = salesList.filter((sale: any) => sale.customer_uuid === newCustomerUuid);
+
+    setCustomerSalesList(filteredSales);
+    console.log(customerSalesList, "salesList filtered");
   };
   // Delete item
   const handleDeleteItem = async (uuid: string) => {
@@ -262,7 +276,6 @@ const Items = () => {
       product_uuid: item.product_uuid,
       quantity: item.quantity,
       unit_price: item.unit_price,
-      customer_uuid: customerUuid,
     });
   };
 
@@ -355,7 +368,7 @@ const Items = () => {
                       </option>
                       <option value="">New sale</option>
 
-                      {salesList.map((sales: any) => (
+                      {customerSalesList.map((sales: any) => (
                         <option key={sales.uuid} value={sales.uuid}>
                           {sales.date} - Total Amount: {sales.total_amount}
                         </option>
