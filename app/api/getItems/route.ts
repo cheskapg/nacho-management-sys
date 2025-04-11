@@ -3,7 +3,7 @@ const NEXT_PUBLIC_API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localho
 export async function GET(request: NextRequest) {
   try {
     // Fetch data from Fastify API
-    const response = await fetch(NEXT_PUBLIC_API_BASE + '/items');
+    const response = await fetch(`${NEXT_PUBLIC_API_BASE}/items`)
     
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
