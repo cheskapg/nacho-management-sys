@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NachoSales Management System
+![image](https://github.com/user-attachments/assets/0486f3b5-c675-436b-b0b4-c327c1fde273)
 
-## Getting Started
+A comprehensive analytics dashboard built with Next.js 15 for tracking and visualizing sales data, customer behavior, and product performance.
+Show Image
+Features
 
-First, run the development server:
+Sales Overview: Track total sales, customer counts, and item sales with real-time metrics
+Time-based Analysis: Navigate through different time periods with the interactive date selector
+Visual Data Representation: Analyze trends with interactive charts and graphs
+Customer Insights: Drill down into customer purchase history and spending patterns
+Product Performance: Identify top-selling products and track inventory movement
+Responsive Design: Fully responsive layout that works on desktop, tablet, and mobile devices
 
-```bash
-npm run dev
+Tech Stack
+
+Frontend: Next.js 15, React, TypeScript
+UI/Styling: Tailwind CSS
+Data Visualization: Recharts
+Backend: Fastify API with TypeScript
+Database: PostgreSQL
+Icons: Lucide React
+
+Getting Started
+Prerequisites
+
+Node.js 18.17.0 or later
+PostgreSQL 14 or later
+npm or yarn
+
+Installation
+
+Clone the repository:
+bashgit clone https://github.com/cheskapg/nacho-management-sys.git
+
+
+Install dependencies:
+npm install
+# or
+yarn install
+
+Set up environment variables:
+Create a .env.local file in the project root with the following variables:
+DATABASE_URL=postgresql://username:password@localhost:5432/sales_dashboard
+NEXT_PUBLIC_API_URL=http://localhost:3000/api
+
+Set up the database:
+refer to https://github.com/cheskapg/codeChallenge
+
+Start the development server:
+bashnpm run dev
 # or
 yarn dev
+
+Open http://localhost:3000 in your browser
+
+Building for Production
+bashnpm run build
 # or
-pnpm dev
+yarn build
+To start the production server:
+bashnpm run start
 # or
-bun dev
-```
+yarn start
+Project Structure
+sales-dashboard/
+├── app/                    # Next.js 15 App Router
+│   ├── api/                # API routes
+│   ├── dashboard/          # Dashboard page
+│   ├── items/              # Items view page
+│   └── layout.tsx          # Root layout
+├── components/             # Reusable React components
+│   ├── charts/             # Chart components
+│   ├── ui/                 # UI components
+│   └── dashboard/          # Dashboard-specific components
+├── lib/                    # Utility functions and data fetching
+├── public/                 # Static assets
+├── styles/                 # Global styles
+├── types/                  # TypeScript type definitions
+└── prisma/                 # Database schema and migrations
+Dashboard Pages
+Main Dashboard (/dashboard)
+The main dashboard provides a high-level overview of sales performance with the following features:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Summary Cards: Quick metrics showing total sales, customer count, and items sold
+Time Navigation: Select different months and years to view historical data
+Sales Trend Chart: Line chart showing daily sales trends
+Customer Distribution: Pie chart displaying customer spending distribution
+Product Performance: Bar chart of top products by revenue
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Items View (/items)
+The items view provides detailed information about product performance:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Product Listing: Comprehensive table of all products with filtering options
+Performance Metrics: Track sales, quantity sold, and average price per product
+Stock Management: Monitor inventory levels and receive low stock alerts
+Category Analysis: Break down sales by product category
+Search Functionality: Quickly find specific products
