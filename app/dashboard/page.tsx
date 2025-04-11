@@ -1,11 +1,11 @@
 import React from 'react'
+import SalesDashboard from '../(components)/Dashboard';
 
 type Props = {}
 
 const Dashboard = () => {
-  return (
-    <div>Dashboard</div>
-  )
+    return <SalesDashboard/>;
+
 }
 
 export default Dashboard
