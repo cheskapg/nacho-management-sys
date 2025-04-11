@@ -1,15 +1,15 @@
 // app/api/sales/month/[year]/[month]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_URL = process.env.API_URL || 'http://localhost:3000';
+const NEXT_PUBLIC_API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3000';
 
 export async function GET(
   request: NextRequest,
 
 ) {
   try {
-    
-    const response = await fetch(`${API_URL}/customers`, {
+
+    const response = await fetch(`${NEXT_PUBLIC_API_BASE}/customers`, {
       headers: {
         'Content-Type': 'application/json',
       },
