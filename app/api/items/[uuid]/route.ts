@@ -6,10 +6,10 @@ const API_URL = process.env.API_URL || 'http://localhost:3000';
 // Get item by UUID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { uuid: string } }
+  { params }: { params: Promise<{ uuid: string;  }> }
 ) {
   try {
-    const { uuid } = params;
+    const { uuid } = await params;
     const response = await fetch(`${API_URL}/items/${uuid}`, {
       headers: {
         'Content-Type': 'application/json',
@@ -35,10 +35,10 @@ export async function GET(
 // Update item
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { uuid: string } }
+  { params }: { params: Promise<{ uuid: string;  }> }
 ) {
   try {
-    const { uuid } = params;
+    const { uuid } = await params;
     const body = await request.json();
     
     const response = await fetch(`${API_URL}/items/${uuid}`, {
@@ -67,10 +67,10 @@ export async function PUT(
 // Delete item
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { uuid: string } }
+  { params }: { params: Promise<{ uuid: string }> } // Note the Promise type
 ) {
   try {
-    const { uuid } = params;
+    const { uuid } = await params;
     const response = await fetch(`${API_URL}/items/${uuid}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },

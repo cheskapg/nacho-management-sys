@@ -5,10 +5,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3000';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { year: string; month: string , customerUuid: string} }
+  { params }: { params: Promise<{ year: string; month:string; customerUuid:string }> } // Note the Promise type
 ) {
   try {
-    const { year, month, customerUuid } = params;
+    const { year, month, customerUuid } = await params;
     
     const response = await fetch(`${API_URL}/reports/month/${year}/${month}/${customerUuid}`, {
       headers: {

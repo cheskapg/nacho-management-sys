@@ -5,10 +5,10 @@ const API_URL = process.env.API_URL || 'http://localhost:3000';
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { customerUuid: string } }
+    { params }: { params: Promise<{ customerUuid: string;}> } // Note the Promise type
 ) {
     try {
-        const { customerUuid } = params;
+        const { customerUuid } = await params;
 
         const response = await fetch(`${API_URL}/sales/customer/${customerUuid}`, {
             headers: {

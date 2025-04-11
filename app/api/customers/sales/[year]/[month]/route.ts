@@ -5,10 +5,10 @@
 
   export async function GET(
     request: NextRequest,
-  context: { params: { year: string; month: string } }
+    { params }: { params: Promise<{ year: string; month:string }> } // Note the Promise type/ Note the Promise type
   ) {
     try {
-      const { year, month } = context.params;
+      const { year, month } = await params;
       
       const response = await fetch(`${API_URL}/customers/sales/${year}/${month}`, {
         headers: {
