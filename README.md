@@ -1,5 +1,5 @@
 # NachoSales Management System
-
+https://nacho-management-sys.vercel.app/view-items
 ![NachoSales Dashboard](https://github.com/user-attachments/assets/0486f3b5-c675-436b-b0b4-c327c1fde273)
 
 A comprehensive analytics dashboard built with Next.js 15 for tracking and visualizing sales data, customer behavior, and product performance.
