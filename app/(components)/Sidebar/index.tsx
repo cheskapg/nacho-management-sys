@@ -31,11 +31,11 @@ function Sidebar() {
 
   const navLinks = [
     { name: "Dashboard", icon: <Home size={20} />, href: "/dashboard" },
-    { name: "Analytics", icon: <BarChart size={20} />, href: "/analytics" },
+    { name: "Analytics", icon: <BarChart size={20} />, href: "/" },
     { name: "Items", icon: <FileText size={20} />, href: "/view-items" },
-    { name: "Users", icon: <Users size={20} />, href: "/users" },
-    { name: "Settings", icon: <Settings size={20} />, href: "/settings" },
-    { name: "Help", icon: <HelpCircle size={20} />, href: "/help" },
+    { name: "Users", icon: <Users size={20} />, href: "/" },
+    { name: "Settings", icon: <Settings size={20} />, href: "/" },
+    { name: "Help", icon: <HelpCircle size={20} />, href: "/" },
   ];
 
   return (
